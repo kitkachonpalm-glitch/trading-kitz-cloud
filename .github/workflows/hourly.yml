@@ -1,39 +1,50 @@
 name: Trading Kitz hourly plan
 on:
   schedule:
-    - cron: "3 * * * *"      # ทุกชั่วโมง นาทีที่ 3 (GitHub อาจช้ากว่านี้ 5-15 นาที)
-  workflow_dispatch: {}      # กดรันเองได้ที่แท็บ Actions
+    - cron: "*/5 * * * *"    # ตรวจทุก 5 นาที (แผน H1 ยังส่งชั่วโมงละครั้ง) · GitHub อาจช้ากว่าเวลาที่ตั้งเล็กน้อย
+  workflow_dispatch: {}
 permissions:
   contents: write
+concurrency:
+  group: trading-kitz
+  cancel-in-progress: false
 jobs:
   plan:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: ติดตั้ง
+          cache: ''
+      - name: install
         run: |
           npm install --no-audit --no-fund
           mkdir -p fonts
           for w in Regular SemiBold Bold; do curl -sfL -o fonts/IBMPlexSansThai-$w.ttf "https://github.com/google/fonts/raw/main/ofl/ibmplexsansthai/IBMPlexSansThai-$w.ttf" || true; done
-          ls -la fonts
-      - name: สร้างแผน H1
+      - name: check market
         run: node run.mjs
         env:
           ASSETS: ${{ vars.ASSETS }}
           HOURS: ${{ vars.HOURS }}
           EVERY: ${{ vars.EVERY }}
+          SIG_TFS: ${{ vars.SIG_TFS }}
+          ALERT_PLAN: ${{ vars.ALERT_PLAN }}
+          ALERT_ZONE: ${{ vars.ALERT_ZONE }}
+          ALERT_SIGNAL: ${{ vars.ALERT_SIGNAL }}
+          ALERT_EXIT: ${{ vars.ALERT_EXIT }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
-      - name: อัปโหลดภาพ
+      - name: save state and images
         run: |
           git config user.name "trading-kitz-bot"
           git config user.email "trading-kitz-bot@users.noreply.github.com"
-          git add -A images
-          git commit -m "plan images" || echo "no changes"
-          git push
-      - name: ส่ง LINE
+          mkdir -p images
+          git add -A images state.json
+          git commit -m "update" || echo "no changes"
+          git pull --rebase -X ours || true
+          git push || true
+      - name: send LINE
         run: node send.mjs
         env:
           LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
