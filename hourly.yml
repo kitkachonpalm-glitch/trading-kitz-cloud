@@ -1,0 +1,39 @@
+name: Trading Kitz hourly plan
+on:
+  schedule:
+    - cron: "3 * * * *"      # ทุกชั่วโมง นาทีที่ 3 (GitHub อาจช้ากว่านี้ 5-15 นาที)
+  workflow_dispatch: {}      # กดรันเองได้ที่แท็บ Actions
+permissions:
+  contents: write
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: ติดตั้ง
+        run: |
+          npm install --no-audit --no-fund
+          mkdir -p fonts
+          for w in Regular SemiBold Bold; do curl -sfL -o fonts/IBMPlexSansThai-$w.ttf "https://github.com/google/fonts/raw/main/ofl/ibmplexsansthai/IBMPlexSansThai-$w.ttf" || true; done
+          ls -la fonts
+      - name: สร้างแผน H1
+        run: node run.mjs
+        env:
+          ASSETS: ${{ vars.ASSETS }}
+          HOURS: ${{ vars.HOURS }}
+          EVERY: ${{ vars.EVERY }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+      - name: อัปโหลดภาพ
+        run: |
+          git config user.name "trading-kitz-bot"
+          git config user.email "trading-kitz-bot@users.noreply.github.com"
+          git add -A images
+          git commit -m "plan images" || echo "no changes"
+          git push
+      - name: ส่ง LINE
+        run: node send.mjs
+        env:
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
