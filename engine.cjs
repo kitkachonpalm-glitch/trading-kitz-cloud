@@ -195,19 +195,24 @@ function analyze(k,htf){
 function drawScenCanvas(S,cv,W,H,dpr,C,top=0){
   cv.width=W*dpr;cv.height=(H+top)*dpr;const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);if(top){x.fillStyle=C.bg||'#fff';x.fillRect(0,0,W,H+top)}else x.clearRect(0,0,W,H);x.translate(0,top);const an=S.an,k=an.k.slice(-72),a=S.a;
   const padR=W>=1000?230:150,cw=W-padR,cEnd=cw*.72,N=k.length,bw=cEnd/N;let hi=Math.max(...k.map(b=>b.h)),lo=Math.min(...k.map(b=>b.l));
-  S.zones.forEach(z=>{hi=Math.max(hi,z.top);lo=Math.min(lo,z.bot)});const pd=(hi-lo)*.08;hi+=pd;lo-=pd;const Y=p=>12+(hi-p)/(hi-lo)*(H-36);
+  S.zones.forEach(z=>{hi=Math.max(hi,z.top);lo=Math.min(lo,z.bot)});{const pp=an.plan;if(pp&&!pp.wait)[pp.sl,pp.t1,pp.t2,pp.t3].forEach(v=>{if(isFinite(v)){hi=Math.max(hi,v);lo=Math.min(lo,v)}})}const pd=(hi-lo)*.08;hi+=pd;lo-=pd;const Y=p=>12+(hi-p)/(hi-lo)*(H-36);
   x.font='11px "IBM Plex Sans Thai",system-ui';x.textBaseline='middle';
   for(let g=0;g<=5;g++){const p=lo+(hi-lo)*g/5;x.strokeStyle=C.grid;x.beginPath();x.moveTo(0,Y(p));x.lineTo(cw,Y(p));x.stroke();x.fillStyle=C.muted;x.fillText(fmt(p,a.dp),cw+6,Y(p))}
   x.fillStyle=C.muted;x.globalAlpha=.07;x.fillRect(cEnd,0,cw-cEnd,H);x.globalAlpha=1;x.fillText('อนาคต (คาดการณ์)',cEnd+8,H-12);
   S.zones.forEach(z=>{const col=z.kind==='d'?C.buy:C.sell,y0=Y(z.top),h=Math.max(3,Y(z.bot)-y0);x.globalAlpha=.16;x.fillStyle=col;x.fillRect(0,y0,cw,h);x.globalAlpha=.75;x.strokeStyle=col;x.strokeRect(0,y0,cw,h);x.globalAlpha=1;
     x.fillStyle=col;x.font='600 12px "IBM Plex Sans Thai",system-ui';x.fillText(`${z.name} ${fmt(z.bot,a.dp)}–${fmt(z.top,a.dp)}`,8,y0+h/2);x.font='11px "IBM Plex Sans Thai",system-ui'});
   k.forEach((b,i)=>{const cx=i*bw+bw/2,up=b.c>=b.o;x.strokeStyle=x.fillStyle=up?C.up:C.dn;x.beginPath();x.moveTo(cx,Y(b.h));x.lineTo(cx,Y(b.l));x.stroke();const y0=Y(Math.max(b.o,b.c));x.fillRect(cx-bw*.33,y0,Math.max(1,bw*.66),Math.max(1,Y(Math.min(b.o,b.c))-y0))});
+  // แกนเวลา (เวลาไทย) + ป้ายไทม์เฟรม ให้รู้ว่าแท่งเทียนเป็นกรอบไหน
+  const tfL=S.tf||'H1',dayTF=/D|W|MN/.test(tfL),stepI=Math.max(1,Math.ceil(N/7));x.fillStyle=C.muted;x.font='11px "IBM Plex Sans Thai",system-ui';
+  for(let i=0;i<N;i+=stepI){const d=new Date(k[i].t*1000);let lb;try{lb=d.toLocaleString('th-TH',dayTF?{timeZone:'Asia/Bangkok',day:'numeric',month:'short'}:{timeZone:'Asia/Bangkok',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch{lb=d.toISOString().slice(5,16).replace('T',' ')}
+    const cx=i*bw+bw/2;x.strokeStyle=C.grid;x.beginPath();x.moveTo(cx,12);x.lineTo(cx,H-24);x.stroke();x.fillText(lb,Math.max(2,cx-28),H-8)}
+  x.font='700 13px "IBM Plex Sans Thai",system-ui';const tw=x.measureText(tfL).width+16;x.fillStyle='rgba(20,35,58,.82)';x.fillRect(cEnd-tw-8,18,tw,22);x.fillStyle='#fff';x.fillText(tfL,cEnd-tw,29);x.font='11px "IBM Plex Sans Thai",system-ui';
   const last=an.last,x0=cEnd,y0=Y(last),D=S.zones.filter(z=>z.kind==='d'),Su=S.zones.filter(z=>z.kind==='s');
   const arrow=(pts,col,dash)=>{x.strokeStyle=col;x.fillStyle=col;x.lineWidth=2.5;x.setLineDash(dash?[7,5]:[]);x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.stroke();x.setLineDash([]);
     const [ax,ay]=pts[pts.length-1],[bx,by]=pts[pts.length-2],ang=Math.atan2(ay-by,ax-bx);x.beginPath();x.moveTo(ax,ay);x.lineTo(ax-12*Math.cos(ang-.45),ay-12*Math.sin(ang-.45));x.lineTo(ax-12*Math.cos(ang+.45),ay-12*Math.sin(ang+.45));x.closePath();x.fill();x.lineWidth=1};
   const fw=cw-cEnd,d1=D[0],s1=Su[0];
-  if(S.bias!=='SELL'&&d1){const yd=Y((d1.top+d1.bot)/2),yt=s1?Y(s1.bot):Y(last+2*an.atrL);arrow([[x0,y0],[x0+fw*.35,yd],[x0+fw*.92,yt]],C.buy,S.bias!=='BUY');if(D[1])arrow([[x0+fw*.35,yd],[x0+fw*.7,Y(D[1].top)]],C.sell,true)}
-  if(S.bias!=='BUY'&&s1){const ys=Y((s1.top+s1.bot)/2),yt=d1?Y(d1.top):Y(last-2*an.atrL);arrow([[x0,y0],[x0+fw*.35,ys],[x0+fw*.92,yt]],C.sell,S.bias!=='SELL');if(Su[1])arrow([[x0+fw*.35,ys],[x0+fw*.7,Y(Su[1].bot)]],C.buy,true)}
+  if(!S.noArrows&&S.bias!=='SELL'&&d1){const yd=Y((d1.top+d1.bot)/2),yt=s1?Y(s1.bot):Y(last+2*an.atrL);arrow([[x0,y0],[x0+fw*.35,yd],[x0+fw*.92,yt]],C.buy,S.bias!=='BUY');if(D[1])arrow([[x0+fw*.35,yd],[x0+fw*.7,Y(D[1].top)]],C.sell,true)}
+  if(!S.noArrows&&S.bias!=='BUY'&&s1){const ys=Y((s1.top+s1.bot)/2),yt=d1?Y(d1.top):Y(last-2*an.atrL);arrow([[x0,y0],[x0+fw*.35,ys],[x0+fw*.92,yt]],C.sell,S.bias!=='SELL');if(Su[1])arrow([[x0+fw*.35,ys],[x0+fw*.7,Y(Su[1].bot)]],C.buy,true)}
   x.fillStyle=C.gold;x.beginPath();x.arc(x0,y0,4,0,7);x.fill();x.fillText(fmt(last,a.dp),x0+8,y0-10);
   // ── เส้นราคาเต็มความกว้าง + ป้ายราคาบนแกนขวา (อ่านง่ายบนมือถือ) ──
   const p=an.plan,lv=[];
