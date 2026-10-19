@@ -34,6 +34,7 @@ jobs:
           ALERT_ZONE: ${{ vars.ALERT_ZONE }}
           ALERT_SIGNAL: ${{ vars.ALERT_SIGNAL }}
           ALERT_EXIT: ${{ vars.ALERT_EXIT }}
+          PC_URL: ${{ secrets.PC_URL }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
       - name: save state and images
         run: |
